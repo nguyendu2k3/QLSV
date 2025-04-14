@@ -1,0 +1,117 @@
+
+/* Reset CSS */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Segoe UI', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f5f5f5;
+  }
+  
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+      monospace;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
+  /* Animation classes */
+  .fade-enter {
+    opacity: 0;
+  }
+  
+  .fade-enter-active {
+    opacity: 1;
+    transition: opacity 300ms ease-in;
+  }
+  
+  .fade-exit {
+    opacity: 1;
+  }
+  
+  .fade-exit-active {
+    opacity: 0;
+    transition: opacity 300ms ease-out;
+  }
+  
+  /* Material-UI overrides */
+  .MuiPaper-root {
+    transition: box-shadow 0.3s ease-in-out !important;
+  }
+  
+  .MuiPaper-root:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .MuiButton-root {
+    text-transform: none !important;
+  }
+  
+  /* Loading animation */
+  @keyframes pulse {
+    0% {
+      transform: scale(0.95);
+      opacity: 0.7;
+    }
+    50% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0.95);
+      opacity: 0.7;
+    }
+  }
+  
+  .loading-pulse {
+    animation: pulse 1.5s infinite;
+  }
+  
+  /* Custom styles for cards */
+  .custom-card {
+    border-radius: 12px !important;
+    transition: transform 0.2s ease-in-out !important;
+  }
+  
+  .custom-card:hover {
+    transform: translateY(-2px);
+  }
+  
+  /* Responsive typography */
+  @media (max-width: 600px) {
+    .MuiTypography-h4 {
+      font-size: 1.75rem !important;
+    }
+    .MuiTypography-h5 {
+      font-size: 1.5rem !important;
+    }
+    .MuiTypography-h6 {
+      font-size: 1.25rem !important;
+    }
+  }
