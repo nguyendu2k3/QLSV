@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getAvatarUrl } from '../../utils/api';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -46,7 +47,11 @@ const Navbar = () => {
               Diễn Đàn
             </Button>
             <IconButton onClick={handleMenu} color="inherit">
-              <Avatar src={user.profilePicture} alt={user.name}>
+              <Avatar 
+                src={getAvatarUrl(user.avatar)} 
+                alt={user.name}
+                sx={{ bgcolor: 'secondary.main' }}
+              >
                 {user.name?.charAt(0)}
               </Avatar>
             </IconButton>

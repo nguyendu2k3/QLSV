@@ -18,9 +18,16 @@ export const AuthProvider = ({ children }) => {
       try {
         // Sửa jwt_decode thành jwtDecode
         const decoded = jwtDecode(token);
-        setUser(decoded);
+        // Kiểm tra nếu có thông tin user được lưu trữ
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        } else {
+          setUser(decoded);
+        }
       } catch (error) {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setUser(null);
       }
     }
@@ -29,18 +36,27 @@ export const AuthProvider = ({ children }) => {
 
   const login = (token, userData) => {
     localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
+  };
+  
+  // Cập nhật hàm updateUser để lưu thông tin người dùng vào localStorage
+  const updateUser = (userData) => {
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
   };
 
   const value = {
     user,
     login,
     logout,
+    updateUser,
     loading
   };
 

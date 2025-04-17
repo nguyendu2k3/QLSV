@@ -30,6 +30,7 @@ import {
   School
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import { getAvatarUrl } from '../../utils/api';
 
 const drawerWidth = 240;
 
@@ -108,7 +109,7 @@ const Layout = () => {
             <IconButton onClick={handleMenuClick} sx={{ p: 0 }}>
               <Avatar
                 alt={user?.name}
-                src={user?.avatar}
+                src={getAvatarUrl(user?.avatar)}
                 sx={{ 
                   bgcolor: theme.palette.secondary.main,
                   width: 35,

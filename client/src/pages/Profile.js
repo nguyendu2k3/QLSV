@@ -15,25 +15,28 @@ import {
   List,
   ListItem,
   ListItemText,
-  Divider
+  Divider,
+  CircularProgress
 } from '@mui/material';
 import { PhotoCamera, Save } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
-// import { authAPI } from '../utils/api';
+import { authAPI, getAvatarUrl } from '../utils/api';
 import moment from 'moment';
 import 'moment/locale/vi';
 moment.locale('vi');
 
 const Profile = () => {
-  const { user } = useAuth();  // Giữ lại vì chúng ta sẽ dùng
+  const { user, updateUser } = useAuth();
   const [profileData, setProfileData] = useState({
-    username: user?.username || 'nguyendu2k3',
-    name: user?.name || 'nguyendu',
-    email: user?.email || 'nguyendu2k3@example.com',
-    studentId: user?.studentId || 'SV001',
-    bio: user?.bio || 'Sinh viên năm 2 ngành Công nghệ thông tin'
+    username: '',
+    name: '',
+    email: '',
+    studentId: '',
+    bio: '',
+    avatar: null
   });
   const [loading, setLoading] = useState(true);
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [tabValue, setTabValue] = useState(0);
@@ -53,8 +56,31 @@ const Profile = () => {
   ]);
 
   useEffect(() => {
-    // Giả lập API call
-    setLoading(false);
+    // Lấy thông tin profile từ API
+    const fetchUserProfile = async () => {
+      try {
+        setLoading(true);
+        const response = await authAPI.getProfile();
+        if (response.data && response.data.success) {
+          const userData = response.data.user;
+          setProfileData({
+            username: userData.username,
+            name: userData.name,
+            email: userData.email,
+            studentId: userData.studentId,
+            bio: userData.bio || 'Sinh viên năm 2 ngành Công nghệ thông tin',
+            avatar: userData.avatar
+          });
+        }
+      } catch (error) {
+        console.error('Lỗi khi lấy dữ liệu profile:', error);
+        setError('Không thể tải thông tin người dùng. Vui lòng thử lại sau.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
   }, []);
 
   const handleChange = (e) => {
@@ -66,12 +92,48 @@ const Profile = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoadingUpdate(true);
+
     try {
-      // Giả lập API call
-      setSuccess('Cập nhật thông tin thành công');
-      setTimeout(() => setSuccess(''), 3000);
+      // Gửi request cập nhật thông tin
+      const response = await authAPI.updateProfile({
+        name: profileData.name,
+        email: profileData.email,
+        bio: profileData.bio
+      });
+
+      if (response.data && response.data.success) {
+        setSuccess('Cập nhật thông tin thành công');
+        // Cập nhật lại dữ liệu từ response nếu cần
+        const userData = response.data.user;
+        setProfileData(prev => ({
+          ...prev,
+          name: userData.name,
+          email: userData.email
+        }));
+        
+        // Cập nhật thông tin trong context toàn cục
+        if (updateUser) {
+          updateUser({
+            ...user,
+            name: userData.name,
+            email: userData.email,
+            bio: userData.bio
+          });
+        }
+        
+        setTimeout(() => setSuccess(''), 3000);
+      }
     } catch (error) {
-      setError('Cập nhật thất bại');
+      console.error('Lỗi khi cập nhật profile:', error);
+      setError(
+        error.response?.data?.message || 
+        'Cập nhật thất bại. Vui lòng thử lại sau.'
+      );
+    } finally {
+      setLoadingUpdate(false);
     }
   };
 
@@ -80,10 +142,33 @@ const Profile = () => {
     if (!file) return;
 
     try {
-      setSuccess('Upload ảnh thành công');
-      setTimeout(() => setSuccess(''), 3000);
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      // Upload ảnh đại diện
+      const response = await authAPI.uploadAvatar(formData);
+      
+      if (response.data && response.data.success) {
+        setSuccess('Upload ảnh thành công');
+        // Cập nhật avatar URL trong state
+        setProfileData(prev => ({
+          ...prev,
+          avatar: response.data.avatarUrl
+        }));
+        
+        // Cập nhật avatar trong context toàn cục để tất cả component có thể nhận được
+        if (updateUser) {
+          updateUser({
+            ...user,
+            avatar: response.data.avatarUrl
+          });
+        }
+        
+        setTimeout(() => setSuccess(''), 3000);
+      }
     } catch (error) {
-      setError('Upload ảnh thất bại');
+      console.error('Lỗi khi upload ảnh:', error);
+      setError('Upload ảnh thất bại. Vui lòng thử lại.');
     }
   };
 
@@ -92,7 +177,11 @@ const Profile = () => {
   };
 
   if (loading) {
-    return <Typography>Đang tải...</Typography>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '70vh' }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
@@ -102,6 +191,7 @@ const Profile = () => {
           <Paper sx={{ p: 3, textAlign: 'center' }}>
             <Box sx={{ position: 'relative', display: 'inline-block' }}>
               <Avatar
+                src={getAvatarUrl(profileData.avatar)}
                 sx={{ width: 150, height: 150, mb: 2, mx: 'auto', fontSize: '3rem' }}
               >
                 {profileData.name.charAt(0)}
@@ -153,12 +243,12 @@ const Profile = () => {
             {tabValue === 0 && (
               <Box component="form" onSubmit={handleSubmit}>
                 {error && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
+                  <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
                     {error}
                   </Alert>
                 )}
                 {success && (
-                  <Alert severity="success" sx={{ mb: 2 }}>
+                  <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>
                     {success}
                   </Alert>
                 )}
@@ -206,9 +296,10 @@ const Profile = () => {
                     <Button
                       type="submit"
                       variant="contained"
-                      startIcon={<Save />}
+                      startIcon={loadingUpdate ? <CircularProgress size={24} color="inherit" /> : <Save />}
+                      disabled={loadingUpdate}
                     >
-                      Lưu thay đổi
+                      {loadingUpdate ? 'Đang xử lý...' : 'Lưu thay đổi'}
                     </Button>
                   </Grid>
                 </Grid>

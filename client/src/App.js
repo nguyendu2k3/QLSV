@@ -12,8 +12,10 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import Profile from './pages/Profile';
 import Forum from './pages/Forum';
+import PostDetail from './pages/PostDetail';
 import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
+import EditPost from './pages/EditPost';
 
 // Tạo theme mới
 const theme = createTheme({
@@ -98,6 +100,16 @@ function App() {
               <Route path="/forum" element={
                 <PrivateRoute>
                   <Forum />
+                </PrivateRoute>
+              } />
+              <Route path="/forum/post/:postId" element={
+                <PrivateRoute>
+                  <PostDetail />
+                </PrivateRoute>
+              } />
+              <Route path="/forum/edit/:postId" element={
+                <PrivateRoute>
+                  <EditPost />
                 </PrivateRoute>
               } />
               <Route path="/dashboard" element={

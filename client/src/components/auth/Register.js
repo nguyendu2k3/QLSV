@@ -22,7 +22,7 @@ const Register = () => {
     confirmPassword: '',
     email: '',
     name: '',
-    studentId: ''
+    
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -130,16 +130,6 @@ const Register = () => {
               name="name"
               autoComplete="name"
               value={formData.name}
-              onChange={handleInputChange}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="studentId"
-              label="Mã sinh viên"
-              name="studentId"
-              value={formData.studentId}
               onChange={handleInputChange}
             />
             <TextField

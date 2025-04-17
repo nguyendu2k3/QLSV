@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs'); // Thêm import bcryptjs
 
 // Tạo token
 const generateToken = (id) => {
@@ -21,12 +22,21 @@ const register = async (req, res) => {
       });
     }
 
+    // Mã hóa mật khẩu trước khi lưu
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Tạo mã số sinh viên theo định dạng VIU+number
+    // Lấy số lượng người dùng hiện tại để tạo số thứ tự
+    const userCount = await User.countDocuments();
+    const formattedStudentId = `VIU${String(userCount + 1).padStart(4, '0')}`;
+
     const user = await User.create({
       username,
       email,
-      password,
+      password: hashedPassword,
       name,
-      studentId
+      studentId: formattedStudentId // Sử dụng mã sinh viên đã định dạng
     });
 
     const token = generateToken(user._id);
@@ -39,7 +49,8 @@ const register = async (req, res) => {
         username: user.username,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        studentId: user.studentId // Trả về mã sinh viên đã định dạng
       }
     });
   } catch (error) {
@@ -64,7 +75,8 @@ const login = async (req, res) => {
       });
     }
 
-    const isMatch = await user.matchPassword(password);
+    // Sửa phương thức so sánh mật khẩu
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -82,7 +94,9 @@ const login = async (req, res) => {
         username: user.username,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        studentId: user.studentId, // Trả về mã sinh viên trong response
+        avatar: user.avatar // Thêm avatar vào response khi đăng nhập
       }
     });
   } catch (error) {
@@ -130,9 +144,10 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    const { name, email } = req.body;
+    const { name, email, bio } = req.body;
     user.name = name || user.name;
     user.email = email || user.email;
+    user.bio = bio !== undefined ? bio : user.bio; // Thêm trường bio
 
     await user.save();
 
@@ -143,10 +158,57 @@ const updateProfile = async (req, res) => {
         username: user.username,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        bio: user.bio, // Trả về trường bio trong response
+        studentId: user.studentId,
+        avatar: user.avatar // Thêm avatar vào response khi cập nhật
       }
     });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server',
+      error: error.message
+    });
+  }
+};
+
+// Upload avatar
+const uploadAvatar = async (req, res) => {
+  try {
+    // Giả sử bạn đã có middleware xử lý upload file
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không tìm thấy file upload'
+      });
+    }
+
+    console.log('File avatar đã upload:', req.file);
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy người dùng'
+      });
+    }
+
+    // Tạo đường dẫn tương đối thay vì sử dụng đường dẫn tuyệt đối
+    const relativePath = `uploads/avatars/${req.file.filename}`;
+    console.log('Đường dẫn avatar tương đối:', relativePath);
+
+    // Lưu đường dẫn tương đối
+    user.avatar = relativePath;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Upload avatar thành công',
+      avatarUrl: relativePath
+    });
+  } catch (error) {
+    console.error('Lỗi upload avatar:', error);
     res.status(500).json({
       success: false,
       message: 'Lỗi server',
@@ -159,5 +221,6 @@ module.exports = {
   register,
   login,
   getProfile,
-  updateProfile
+  updateProfile,
+  uploadAvatar // Thêm vào exports
 };
