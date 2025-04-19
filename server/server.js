@@ -60,6 +60,10 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/userRoutes'));
 // Forum routes
 app.use('/api/forum', require('./routes/forumRoutes'));
+// Student management routes
+app.use('/api/students', require('./routes/studentRoutes'));
+// Admin management routes
+app.use('/api/admins', require('./routes/adminRoutes'));
 
 // Xử lý lỗi
 app.use((err, req, res, next) => {

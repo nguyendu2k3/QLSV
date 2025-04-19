@@ -9,8 +9,6 @@ import {
   Box,
   InputAdornment,
   CircularProgress,
-  Chip,
-  Stack,
   Avatar,
   IconButton,
   Divider,
@@ -19,10 +17,6 @@ import {
   Tab,
   useTheme,
   useMediaQuery,
-  Badge,
-  Card,
-  CardMedia,
-  CardContent,
   Drawer,
   List,
   ListItem,
@@ -30,24 +24,10 @@ import {
   ListItemIcon,
   AppBar,
   Toolbar,
-  Tooltip,
 } from '@mui/material';
 import {
   Add,
   Search,
-  TrendingUp,
-  NewReleases,
-  ThumbUp,
-  Comment,
-  Event,
-  Bookmarks,
-  Groups,
-  AccountCircle,
-  Visibility,
-  Home,
-  Explore,
-  NotificationsNone,
-  Notifications,
   Sort,
   Close,
   Menu as MenuIcon,
@@ -56,7 +36,7 @@ import { useNavigate } from 'react-router-dom';
 import CreatePost from '../components/forum/CreatePost';
 import ForumPost from '../components/forum/ForumPost';
 import { useAuth } from '../context/AuthContext';
-import { forumAPI, getAvatarUrl, getMediaUrl } from '../utils/api';
+import { forumAPI, getAvatarUrl } from '../utils/api';
 
 // Các danh mục diễn đàn được mở rộng
 const categories = [
@@ -351,21 +331,15 @@ const Forum = () => {
       <List sx={{ pt: 1 }}>
         <ListItem button component="a" href="/">
           <ListItemIcon>
-            <Home color="primary" />
+            <MenuIcon color="primary" />
           </ListItemIcon>
           <ListItemText primary="Trang chủ" />
         </ListItem>
         <ListItem button selected component="a" href="/forum">
           <ListItemIcon>
-            <Explore color="primary" />
+            <MenuIcon color="primary" />
           </ListItemIcon>
           <ListItemText primary="Diễn đàn" />
-        </ListItem>
-        <ListItem button component="a" href="/notifications">
-          <ListItemIcon>
-            <NotificationsNone color="primary" />
-          </ListItemIcon>
-          <ListItemText primary="Thông báo" />
         </ListItem>
       </List>
       <Divider />
@@ -419,7 +393,7 @@ const Forum = () => {
       <Typography variant="subtitle1" gutterBottom fontWeight="medium">
         Sắp xếp theo
       </Typography>
-      <Stack spacing={1} sx={{ mb: 3 }}>
+      <Box sx={{ mb: 3 }}>
         {['newest', 'trending', 'comments', 'views'].map((option) => (
           <Button 
             key={option}
@@ -430,12 +404,6 @@ const Forum = () => {
               justifyContent: 'flex-start',
               borderRadius: 2
             }}
-            startIcon={
-              option === 'newest' ? <NewReleases /> :
-              option === 'trending' ? <TrendingUp /> :
-              option === 'comments' ? <Comment /> :
-              <Visibility />
-            }
           >
             {option === 'newest' ? 'Mới nhất' :
              option === 'trending' ? 'Thịnh hành' :
@@ -443,12 +411,12 @@ const Forum = () => {
              'Xem nhiều'}
           </Button>
         ))}
-      </Stack>
+      </Box>
       
       <Typography variant="subtitle1" gutterBottom fontWeight="medium">
         Danh mục
       </Typography>
-      <Stack spacing={1}>
+      <Box>
         {categories.map((category) => (
           <Button
             key={category}
@@ -463,7 +431,7 @@ const Forum = () => {
             {category}
           </Button>
         ))}
-      </Stack>
+      </Box>
     </Drawer>
   );
 
@@ -509,12 +477,6 @@ const Forum = () => {
                 flexGrow: { xs: 1, sm: 0 }
               }}
             >
-              <Box 
-                component="img" 
-                src="https://img-os-static.hoyolab.com/comm_icon/favicon.ico"
-                alt="HoYoLAB" 
-                sx={{ height: 24, width: 24, mr: 1 }}
-              />
               Diễn đàn sinh viên
             </Typography>
             
@@ -679,10 +641,6 @@ const Forum = () => {
                   {categories.map((category) => (
                     <Button
                       key={category}
-                      startIcon={category === 'Tất cả' ? <Bookmarks /> : 
-                                category === 'Học tập' ? <Event /> :
-                                category === 'Hoạt động sinh viên' ? <Groups /> :
-                                <AccountCircle />}
                       color={selectedCategory === category ? 'primary' : 'inherit'}
                       onClick={() => setSelectedCategory(category)}
                       sx={{
@@ -775,22 +733,22 @@ const Forum = () => {
                 }}
               >
                 <Tab 
-                  icon={<NewReleases fontSize="small" />} 
+                  icon={<Sort fontSize="small" />} 
                   label={isMobile ? '' : 'Mới nhất'} 
                   iconPosition="start" 
                 />
                 <Tab 
-                  icon={<TrendingUp fontSize="small" />} 
+                  icon={<Sort fontSize="small" />} 
                   label={isMobile ? '' : 'Thịnh hành'} 
                   iconPosition="start"
                 />
                 <Tab 
-                  icon={<Comment fontSize="small" />} 
+                  icon={<Sort fontSize="small" />} 
                   label={isMobile ? '' : 'Bình luận nhiều'} 
                   iconPosition="start"
                 />
                 <Tab 
-                  icon={<Visibility fontSize="small" />} 
+                  icon={<Sort fontSize="small" />} 
                   label={isMobile ? '' : 'Xem nhiều'} 
                   iconPosition="start"
                 />
@@ -835,17 +793,6 @@ const Forum = () => {
                   backgroundColor: theme.palette.background.paper
                 }}
               >
-                <Box
-                  component="img"
-                  src="https://img-static.mihoyo.com/communityweb/upload/ace5032439f21081985cd6c8c2560a6b.png"
-                  alt="Empty state"
-                  sx={{ 
-                    width: '180px',
-                    height: 'auto',
-                    mb: 2,
-                    opacity: 0.9
-                  }}
-                />
                 <Typography variant="h6" color="text.secondary" gutterBottom>
                   Chưa có bài viết nào trong danh mục này
                 </Typography>

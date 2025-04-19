@@ -1,4 +1,5 @@
 const ForumPost = require('../models/Forum');
+const User = require('../models/User'); // Thêm import User model
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
@@ -53,8 +54,8 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
-// Export upload middleware để sử dụng trong routes
-exports.uploadFiles = upload.fields([
+// Khai báo tất cả các hàm sẽ được xuất
+const uploadFiles = upload.fields([
   { name: 'images', maxCount: 5 },
   { name: 'videos', maxCount: 2 },
   { name: 'attachments', maxCount: 5 }
@@ -86,7 +87,7 @@ const commentStorage = multer.diskStorage({
 });
 
 // Middleware để xử lý upload ảnh cho bình luận
-exports.uploadCommentImage = multer({
+const uploadCommentImage = multer({
   storage: commentStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // Giới hạn 5MB
   fileFilter: (req, file, cb) => {
@@ -99,7 +100,7 @@ exports.uploadCommentImage = multer({
 }).single('commentImage'); // Tên field chứa file hình ảnh
 
 // Tạo bài viết mới
-exports.createPost = async (req, res) => {
+const createPost = async (req, res) => {
   try {
     const { title, content, category, tags, images, videos, attachments } = req.body;
 
@@ -146,7 +147,7 @@ exports.createPost = async (req, res) => {
 };
 
 // Upload files riêng lẻ
-exports.uploadMediaFiles = async (req, res) => {
+const uploadMediaFiles = async (req, res) => {
   try {
     console.log('Bắt đầu xử lý tải lên file');
     
@@ -223,7 +224,7 @@ exports.uploadMediaFiles = async (req, res) => {
 };
 
 // Lấy danh sách bài viết
-exports.getPosts = async (req, res) => {
+const getPosts = async (req, res) => {
   try {
     const userId = req.user?.id; // Optional: user might not be authenticated
     
@@ -254,7 +255,7 @@ exports.getPosts = async (req, res) => {
 };
 
 // Lấy chi tiết bài viết theo ID
-exports.getPostById = async (req, res) => {
+const getPostById = async (req, res) => {
   try {
     const postId = req.params.postId;
     const userId = req.user?.id; // Optional: user might not be authenticated
@@ -302,7 +303,7 @@ exports.getPostById = async (req, res) => {
 };
 
 // Tăng lượt xem bài viết
-exports.incrementPostView = async (req, res) => {
+const incrementPostView = async (req, res) => {
   try {
     const postId = req.params.postId;
     console.log(`Tăng lượt xem cho bài viết ID: ${postId}`);
@@ -338,7 +339,7 @@ exports.incrementPostView = async (req, res) => {
 };
 
 // Thêm bình luận
-exports.addComment = async (req, res) => {
+const addComment = async (req, res) => {
   try {
     const post = await ForumPost.findById(req.params.postId);
 
@@ -393,7 +394,7 @@ exports.addComment = async (req, res) => {
 };
 
 // Cập nhật bài viết
-exports.updatePost = async (req, res) => {
+const updatePost = async (req, res) => {
   try {
     const postId = req.params.postId;
     const { title, content, category, tags, images, videos, attachments } = req.body;
@@ -509,7 +510,7 @@ exports.updatePost = async (req, res) => {
 };
 
 // Xóa bài viết
-exports.deletePost = async (req, res) => {
+const deletePost = async (req, res) => {
   try {
     const postId = req.params.postId;
     
@@ -524,8 +525,8 @@ exports.deletePost = async (req, res) => {
       });
     }
     
-    // Kiểm tra quyền sở hữu - chỉ tác giả mới có thể xóa
-    if (post.author.toString() !== req.user.id) {
+    // Kiểm tra quyền - Cho phép admin hoặc chính tác giả xóa bài viết
+    if (post.author.toString() !== req.user.id && !['admin', 'superAdmin'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền xóa bài viết này'
@@ -577,8 +578,8 @@ exports.deletePost = async (req, res) => {
   }
 };
 
-// Like a post - updated to prevent multiple likes from the same user
-exports.likePost = async (req, res) => {
+// Like a post
+const likePost = async (req, res) => {
   try {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -612,8 +613,8 @@ exports.likePost = async (req, res) => {
   }
 };
 
-// Unlike a post - allows users to remove their like
-exports.unlikePost = async (req, res) => {
+// Unlike a post
+const unlikePost = async (req, res) => {
   try {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -645,4 +646,121 @@ exports.unlikePost = async (req, res) => {
     console.error(error.message);
     res.status(500).send('Server Error');
   }
+};
+
+// Lấy thống kê diễn đàn
+const getForumStats = async (req, res) => {
+  try {
+    console.log('API getForumStats được gọi');
+    
+    // Đếm tổng số bài viết
+    const totalPosts = await ForumPost.countDocuments();
+    console.log('totalPosts:', totalPosts);
+    
+    // Đếm số bài viết mới trong tháng này
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const newPostsThisMonth = await ForumPost.countDocuments({
+      createdAt: { $gte: firstDayOfMonth }
+    });
+    console.log('newPostsThisMonth:', newPostsThisMonth);
+    
+    // Lấy các bài viết phổ biến nhất (có nhiều lượt xem nhất)
+    const popularPosts = await ForumPost.find()
+      .sort({ views: -1 })
+      .limit(5)
+      .populate('author', 'name avatar');
+    console.log('popularPosts count:', popularPosts.length);
+    
+    // Đếm tổng số lượt xem, bình luận
+    const totalStats = await ForumPost.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalViews: { $sum: '$views' },
+          totalComments: { $sum: { $size: '$comments' } },
+          totalLikes: { $sum: { $size: '$likes.users' } }
+        }
+      }
+    ]);
+    console.log('totalStats:', totalStats);
+    
+    // Đếm số lượng danh mục (giả sử dùng hệ thống tag làm danh mục)
+    const categories = await ForumPost.distinct('category');
+    console.log('categories:', categories);
+    
+    const totalCategories = categories.length;
+    
+    // Đếm số bài viết theo người dùng (top contributors)
+    const topContributors = await ForumPost.aggregate([
+      {
+        $group: {
+          _id: '$author',
+          postCount: { $sum: 1 }
+        }
+      },
+      { $sort: { postCount: -1 } },
+      { $limit: 5 }
+    ]);
+    console.log('topContributors count:', topContributors.length);
+    
+    // Lấy thông tin người dùng cho top contributors
+    const populatedContributors = await User.populate(topContributors, {
+      path: '_id',
+      select: 'name avatar'
+    });
+    
+    const contributors = populatedContributors.map(item => ({
+      user: item._id,
+      postCount: item.postCount
+    }));
+    
+    const result = {
+      success: true,
+      totalPosts,
+      newPostsThisMonth,
+      popularPosts,
+      totalViews: totalStats.length > 0 ? totalStats[0].totalViews : 0,
+      totalComments: totalStats.length > 0 ? totalStats[0].totalComments : 0,
+      totalLikes: totalStats.length > 0 ? totalStats[0].totalLikes : 0,
+      totalCategories,
+      contributors
+    };
+    
+    console.log('Kết quả thống kê:', { 
+      totalPosts, 
+      newPostsThisMonth,
+      totalCategories,
+      popularPostsCount: popularPosts.length,
+      topContributorsCount: topContributors.length
+    });
+    
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error getting forum statistics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy thống kê diễn đàn',
+      error: error.message,
+      stack: error.stack // Thêm stack trace để debug chi tiết hơn
+    });
+  }
+};
+
+// Export tất cả các hàm với một cách thống nhất
+module.exports = {
+  uploadFiles,
+  uploadCommentImage,
+  createPost,
+  uploadMediaFiles,
+  getPosts,
+  getPostById,
+  incrementPostView,
+  addComment,
+  updatePost,
+  deletePost,
+  likePost,
+  unlikePost,
+  getForumStats
 };

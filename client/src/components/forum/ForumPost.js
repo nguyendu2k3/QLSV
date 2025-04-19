@@ -45,7 +45,7 @@ import {
 } from '@mui/icons-material';
 import moment from 'moment';
 import 'moment/locale/vi';
-import { getAvatarUrl, getMediaUrl } from '../../utils/api';
+import { getAvatarUrl, getMediaUrl, forumAPI } from '../../utils/api';
 import CommentSection from './CommentSection';
 
 moment.locale('vi');
@@ -74,7 +74,9 @@ const ForumPost = ({ post, onViewDetails, onLikePost, onDeletePost, currentUser 
     });
   }
 
+  // Check if user is author or admin for post deletion
   const isAuthor = currentUser && post.author && currentUser.id === post.author.id;
+  const canDelete = forumAPI.canDeletePost(post, currentUser);
   const isOfficial = post.isOfficial || false;
   const isPinned = post.isPinned || false;
 
@@ -356,6 +358,13 @@ const ForumPost = ({ post, onViewDetails, onLikePost, onDeletePost, currentUser 
                     </ListItemIcon>
                     <ListItemText>Chỉnh sửa bài viết</ListItemText>
                   </MenuItem>
+                </>
+              )}
+              
+              {/* Show delete option for post author or admin users */}
+              {canDelete && (
+                <>
+                  {!isAuthor && <Divider />}
                   <MenuItem onClick={(e) => {
                     e.stopPropagation();
                     if (onDeletePost) onDeletePost(post._id);
@@ -364,7 +373,12 @@ const ForumPost = ({ post, onViewDetails, onLikePost, onDeletePost, currentUser 
                     <ListItemIcon>
                       <Delete fontSize="small" color="error" />
                     </ListItemIcon>
-                    <ListItemText>Xóa bài viết</ListItemText>
+                    <ListItemText>
+                      {!isAuthor && ['admin', 'superAdmin'].includes(currentUser?.role) 
+                        ? 'Xóa bài viết (Admin)' 
+                        : 'Xóa bài viết'
+                      }
+                    </ListItemText>
                   </MenuItem>
                 </>
               )}

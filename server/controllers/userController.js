@@ -132,6 +132,41 @@ const getProfile = async (req, res) => {
   }
 };
 
+// Lấy thông tin profile của một người dùng khác
+const getUserProfile = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Validate userId
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID format'
+      });
+    }
+
+    const user = await User.findById(userId).select('-password -permissions -__v');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy người dùng'
+      });
+    }
+
+    res.json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin người dùng:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server',
+      error: error.message
+    });
+  }
+};
+
 // Cập nhật profile
 const updateProfile = async (req, res) => {
   try {
@@ -217,10 +252,125 @@ const uploadAvatar = async (req, res) => {
   }
 };
 
+// Đổi mật khẩu
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng điền đầy đủ thông tin mật khẩu'
+      });
+    }
+    
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy người dùng'
+      });
+    }
+    
+    // Kiểm tra mật khẩu hiện tại
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Mật khẩu hiện tại không chính xác'
+      });
+    }
+    
+    // Mã hóa mật khẩu mới
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    
+    await user.save();
+    
+    res.json({
+      success: true,
+      message: 'Đổi mật khẩu thành công'
+    });
+  } catch (error) {
+    console.error('Lỗi đổi mật khẩu:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server khi đổi mật khẩu',
+      error: error.message
+    });
+  }
+};
+
+// Lấy bài viết của người dùng
+const getUserPosts = async (req, res) => {
+  try {
+    // Import Forum model
+    const ForumPost = require('../models/Forum');
+    
+    // Find posts where author matches the current user's ID
+    const posts = await ForumPost.find({ author: req.user.id })
+      .sort({ createdAt: -1 })
+      .populate('author', 'name username avatar')
+      .populate('comments.author', 'name username avatar');
+    
+    res.json({
+      success: true,
+      posts
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy bài viết của người dùng:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server khi lấy bài viết',
+      error: error.message
+    });
+  }
+};
+
+// Lấy bài viết của một người dùng khác
+const getUserPostsById = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Validate userId
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID format'
+      });
+    }
+
+    // Import Forum model
+    const ForumPost = require('../models/Forum');
+    
+    // Find posts where author matches the specified user ID
+    const posts = await ForumPost.find({ author: userId })
+      .sort({ createdAt: -1 })
+      .populate('author', 'name username avatar')
+      .populate('comments.author', 'name username avatar');
+    
+    res.json({
+      success: true,
+      posts
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy bài viết của người dùng:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server khi lấy bài viết',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getProfile,
+  getUserProfile,
   updateProfile,
-  uploadAvatar // Thêm vào exports
+  uploadAvatar,
+  changePassword,
+  getUserPosts,
+  getUserPostsById
 };

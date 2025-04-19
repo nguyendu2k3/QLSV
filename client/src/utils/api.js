@@ -1,63 +1,16 @@
 import axios from 'axios';
 
-// Utility function to get full URL for avatar
-export const getAvatarUrl = (avatarPath) => {
-  console.log("Original avatar path:", avatarPath);
+// Get avatar URL from path
+export const getAvatarUrl = (path) => {
+  if (!path) return null;
   
-  if (!avatarPath) {
-    console.log("No avatar path provided");
-    return null;
+  if (path.startsWith('http')) {
+    return path;
   }
   
-  if (avatarPath.startsWith('http')) {
-    console.log("Avatar path already starts with http:", avatarPath);
-    return avatarPath;
-  }
-  
-  // For cases where the avatar is just a filename (especially in comments)
-  if (!avatarPath.includes('/') && !avatarPath.includes('\\')) {
-    console.log("Simple filename detected:", avatarPath);
-    return `http://localhost:5000/uploads/avatars/${avatarPath}`;
-  }
-  
-  // Xử lý đường dẫn tuyệt đối từ server
-  if (avatarPath.includes(':\\') || avatarPath.includes(':/')) {
-    // Đây là đường dẫn tuyệt đối Windows hoặc UNIX
-    // Lấy tên file từ đường dẫn
-    const filename = avatarPath.split(/[\/\\]/).pop();
-    console.log("Extracted filename from absolute path:", filename);
-    
-    // Tạo đường dẫn tương đối từ tên file
-    const relativePath = `uploads/avatars/${filename}`;
-    console.log("Converted to relative path:", relativePath);
-    
-    return `http://localhost:5000/${relativePath}`;
-  }
-  
-  // Chuyển đổi dấu \ thành / nếu có
-  let formattedPath = avatarPath.replace(/\\/g, '/');
-  console.log("Path after backslash replacement:", formattedPath);
-  
-  // Xử lý trường hợp khi server trả về đường dẫn tương đối (không bắt đầu với uploads)
-  if (!formattedPath.includes('uploads')) {
-    formattedPath = `uploads/avatars/${formattedPath.split('/').pop() || formattedPath}`;
-    console.log("Path after adding uploads/avatars:", formattedPath);
-  }
-  
-  // eslint-disable-next-line no-useless-escape
-  // Loại bỏ dấu / trùng lặp
-  formattedPath = formattedPath.replace(/\/+/g, '/');
-  console.log("Path after duplicate slash removal:", formattedPath);
-  
-  // Nếu có / đầu tiên, loại bỏ để tránh đường dẫn tuyệt đối
-  formattedPath = formattedPath.startsWith('/') ? formattedPath.slice(1) : formattedPath;
-  console.log("Path after leading slash removal:", formattedPath);
-  
-  // Tạo URL hoàn chỉnh
-  const fullUrl = `http://localhost:5000/${formattedPath}`;
-  console.log("Final avatar URL:", fullUrl);
-  
-  return fullUrl;
+  // Extract filename from path if it exists
+  const filename = path.split('/').pop();
+  return `/uploads/avatars/${filename}`;
 };
 
 // Utility function to get full URL for media (images, videos, attachments)
@@ -84,28 +37,30 @@ export const getMediaUrl = (mediaPath) => {
   // Loại bỏ dấu / trùng lặp
   formattedPath = formattedPath.replace(/\/+/g, '/');
   
-  // Nếu có / đầu tiên, loại bỏ để tránh đường dẫn tuyệt đối
-  formattedPath = formattedPath.startsWith('/') ? formattedPath.slice(1) : formattedPath;
+  // Nếu có / đầu tiên, giữ nguyên để đảm bảo đường dẫn hoạt động với proxy
   
-  // Tạo URL hoàn chỉnh
-  const fullUrl = `http://localhost:5000/${formattedPath}`;
-  
-  return fullUrl;
+  // Tạo URL hoàn chỉnh với đường dẫn tương đối
+  return formattedPath;
 };
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Add token to requests
+// Add token to requests - Đã sửa để xử lý lỗi token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error('Error adding token to request:', error);
+      // Không cần throw error ở đây, cứ để request tiếp tục mà không có token
     }
     return config;
   },
@@ -114,13 +69,21 @@ api.interceptors.request.use(
   }
 );
 
-// Handle response errors
+// Handle response errors - Đã sửa để xử lý lỗi token
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+    // Kiểm tra xem lỗi có phải 401 không
+    if (error.response && error.response.status === 401) {
+      try {
+        localStorage.removeItem('token');
+      } catch (e) {
+        console.error('Error removing token from localStorage:', e);
+      }
+      // Kiểm tra nếu không ở trang login thì chuyển hướng
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -129,13 +92,17 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
-  getProfile: () => api.get('/users/profile'),
+  getProfile: (userId) => userId ? api.get(`/users/profile/${userId}`) : api.get('/users/profile'),
   updateProfile: (data) => api.put('/users/profile', data),
   uploadAvatar: (formData) => api.post('/users/avatar', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
-  })
+  }),
+  // Thêm API để thay đổi mật khẩu
+  changePassword: (data) => api.post('/users/change-password', data),
+  // Lấy bài đăng của người dùng (nếu có userId thì lấy của user đó, không thì lấy của user hiện tại)
+  getUserPosts: (userId) => userId ? api.get(`/users/posts/${userId}`) : api.get('/users/posts')
 };
 
 export const forumAPI = {
@@ -154,6 +121,19 @@ export const forumAPI = {
   // Xóa bài viết
   deletePost: (postId) => api.delete(`/forum/posts/${postId}`),
   
+  // Kiểm tra quyền xóa bài viết (cho cả admin và tác giả)
+  canDeletePost: (post, currentUser) => {
+    if (!post || !currentUser) return false;
+    
+    // Admin/superAdmin có thể xóa bất kỳ bài viết nào
+    if (['admin', 'superAdmin'].includes(currentUser.role)) {
+      return true;
+    }
+    
+    // Nếu không phải admin, kiểm tra xem có phải là tác giả không
+    return post.author?._id === currentUser._id;
+  },
+  
   // Like bài viết
   likePost: (postId) => api.post(`/forum/posts/${postId}/like`),
   
@@ -165,6 +145,9 @@ export const forumAPI = {
   
   // Tăng lượt xem bài viết
   incrementPostView: (postId) => api.post(`/forum/posts/${postId}/view`),
+  
+  // Lấy thống kê diễn đàn
+  getForumStats: () => api.get('/forum/stats'),
   
   // Thêm comment vào bài viết (hỗ trợ cả form data với ảnh đính kèm)
   addComment: (commentData, onUploadProgress) => {

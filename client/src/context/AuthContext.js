@@ -9,8 +9,11 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState({
+    user: null,
+    token: null,
+    loading: true
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -21,48 +24,77 @@ export const AuthProvider = ({ children }) => {
         // Kiểm tra nếu có thông tin user được lưu trữ
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
-          setUser(JSON.parse(storedUser));
+          setAuthState({
+            user: JSON.parse(storedUser),
+            token: token,
+            loading: false
+          });
         } else {
-          setUser(decoded);
+          setAuthState({
+            user: decoded,
+            token: token,
+            loading: false
+          });
         }
       } catch (error) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        setUser(null);
+        setAuthState({
+          user: null,
+          token: null,
+          loading: false
+        });
       }
+    } else {
+      setAuthState({
+        user: null,
+        token: null,
+        loading: false
+      });
     }
-    setLoading(false);
   }, []);
 
   const login = (token, userData) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
+    setAuthState({
+      user: userData,
+      token: token,
+      loading: false
+    });
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    setUser(null);
+    setAuthState({
+      user: null,
+      token: null,
+      loading: false
+    });
   };
   
   // Cập nhật hàm updateUser để lưu thông tin người dùng vào localStorage
   const updateUser = (userData) => {
     localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
+    setAuthState(prev => ({
+      ...prev,
+      user: userData
+    }));
   };
 
   const value = {
-    user,
+    authState,
+    user: authState.user, // Duy trì backward compatibility
     login,
     logout,
     updateUser,
-    loading
+    loading: authState.loading // Duy trì backward compatibility
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {!authState.loading && children}
     </AuthContext.Provider>
   );
 };

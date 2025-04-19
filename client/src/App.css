@@ -1,0 +1,20 @@
+/* Global styles for Ant Design */
+.ant-layout-header {
+  padding: 0 20px;
+}
+
+.ant-table {
+  margin-top: 16px;
+}
+
+/* Fix for Ant Design table and MUI table conflicts */
+.ant-table .ant-table-thead > tr > th {
+  background-color: #f0f2f5;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+}

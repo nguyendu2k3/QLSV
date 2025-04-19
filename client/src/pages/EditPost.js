@@ -39,7 +39,6 @@ import { Link } from 'react-router-dom';
 const EditPost = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   // Refs for file inputs
   const fileInputRef = useRef(null);

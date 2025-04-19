@@ -653,7 +653,7 @@ const PostDetail = () => {
                     variant="outlined"
                     fullWidth
                     component={Link}
-                    to={`/profile/${post.author?.id}`}
+                    to={`/profile/${post.author?._id}`}
                     sx={{ 
                       borderRadius: 2, 
                       textTransform: 'none',

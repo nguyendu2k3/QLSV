@@ -48,7 +48,31 @@ const authorize = (...roles) => {
   };
 };
 
+// Check specific admin permissions
+const checkPermission = (permissionType) => {
+  return (req, res, next) => {
+    // Super admin always has all permissions
+    if (req.user.role === 'superAdmin') {
+      return next();
+    }
+    
+    // For regular admins, check specific permission
+    if (req.user.role === 'admin') {
+      if (req.user.permissions && req.user.permissions[permissionType]) {
+        return next();
+      }
+    }
+    
+    // Permission denied
+    return res.status(403).json({
+      success: false,
+      message: 'Bạn không có quyền thực hiện hành động này'
+    });
+  };
+};
+
 module.exports = {
   protect,
-  authorize
+  authorize,
+  checkPermission
 };
