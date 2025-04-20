@@ -7,7 +7,6 @@ import {
   Typography,
   Box,
   Alert,
-  Link,
   CircularProgress // Thêm CircularProgress
 } from '@mui/material';
 import { Login as LoginIcon } from '@mui/icons-material';
@@ -110,31 +109,9 @@ const Login = () => {
             >
               {loading ? 'Đang xử lý...' : 'Đăng nhập'}
             </Button>
-            <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Chưa có tài khoản?{' '}
-                <Link href="/register" variant="body2">
-                  Đăng ký ngay
-                </Link>
-              </Typography>
-            </Box>
           </Box>
 
-          {/* Hiển thị thông tin tài khoản demo khi chưa có backend */}
-          {process.env.NODE_ENV === 'development' && (
-            <Box sx={{ mt: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Tài khoản demo:
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                1. Sinh viên: nguyendu2k3 / 123456
-                <br />
-                2. Admin: admin / admin123
-                <br />
-                3. Giảng viên: teacher / teacher123
-              </Typography>
-            </Box>
-          )}
+         
         </Paper>
       </Box>
     </Container>

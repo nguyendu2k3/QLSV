@@ -28,7 +28,7 @@ const commentsDir = path.join(uploadsDir, 'comments');
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000', // Frontend URL
+  origin: '*', // Cho phép tất cả các nguồn truy cập
   credentials: true
 }));
 app.use(express.json());

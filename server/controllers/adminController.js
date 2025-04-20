@@ -43,7 +43,8 @@ const createAdmin = async (req, res) => {
       name,
       email,
       role: 'admin',
-      createdBy: req.user._id,
+      createdBy: req.user?._id,
+      studentId: undefined, // Explicitly set to undefined to avoid duplicate key errors
       permissions: {
         createStudent: permissions?.createStudent || false,
         editStudent: permissions?.editStudent || false,
@@ -245,6 +246,7 @@ const createSuperAdmin = async (req, res) => {
       name,
       email,
       role: 'superAdmin',
+      studentId: undefined, // Explicitly set to undefined to avoid duplicate key errors
       permissions: {
         createStudent: true,
         editStudent: true,

@@ -24,7 +24,8 @@ const userSchema = new mongoose.Schema({
   studentId: {
     type: String,
     unique: true,
-    sparse: true
+    sparse: true,
+    default: null // Explicitly setting default to null
   },
   role: {
     type: String,
