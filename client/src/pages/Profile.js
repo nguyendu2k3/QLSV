@@ -45,7 +45,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { authAPI, getAvatarUrl, getMediaUrl } from '../utils/api';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import 'moment/locale/vi';
 moment.locale('vi');
@@ -71,11 +71,7 @@ function TabPanel(props) {
 const Profile = () => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
-  const { userId } = useParams();
 
-  // Determine if viewing own profile or another user's
-  const isOwnProfile = !userId || (user && userId === user.id);
-  
   // State for profile data
   const [profileData, setProfileData] = useState({
     username: '',
@@ -118,13 +114,13 @@ const Profile = () => {
   useEffect(() => {
     fetchUserProfile();
     fetchUserPosts();
-  }, [userId]);
+  }, []);
 
   // Function to fetch user profile
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
-      const response = await authAPI.getProfile(userId);
+      const response = await authAPI.getProfile();
       if (response.data && response.data.success) {
         const userData = response.data.user;
         setProfileData({
@@ -152,7 +148,7 @@ const Profile = () => {
   const fetchUserPosts = async () => {
     try {
       setPostsLoading(true);
-      const response = await authAPI.getUserPosts(userId);
+      const response = await authAPI.getUserPosts();
       if (response.data && response.data.success) {
         setUserPosts(response.data.posts || []);
       }
@@ -369,21 +365,19 @@ const Profile = () => {
                 overlap="circular"
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                 badgeContent={
-                  isOwnProfile && (
-                    <label htmlFor="icon-button-file">
-                      <IconButton
-                        component="span"
-                        sx={{
-                          backgroundColor: 'primary.main',
-                          color: 'white',
-                          '&:hover': { backgroundColor: 'primary.dark' }
-                        }}
-                        size="small"
-                      >
-                        <PhotoCamera fontSize="small" />
-                      </IconButton>
-                    </label>
-                  )
+                  <label htmlFor="icon-button-file">
+                    <IconButton
+                      component="span"
+                      sx={{
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        '&:hover': { backgroundColor: 'primary.dark' }
+                      }}
+                      size="small"
+                    >
+                      <PhotoCamera fontSize="small" />
+                    </IconButton>
+                  </label>
                 }
               >
                 <Avatar
@@ -401,15 +395,13 @@ const Profile = () => {
                   {profileData.name.charAt(0)}
                 </Avatar>
               </Badge>
-              {isOwnProfile && (
-                <input
-                  accept="image/*"
-                  type="file"
-                  id="icon-button-file"
-                  style={{ display: 'none' }}
-                  onChange={handleImageUpload}
-                />
-              )}
+              <input
+                accept="image/*"
+                type="file"
+                id="icon-button-file"
+                style={{ display: 'none' }}
+                onChange={handleImageUpload}
+              />
               
               <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
                 {profileData.name}
@@ -455,16 +447,14 @@ const Profile = () => {
                 </List>
               </Box>
               
-              {isOwnProfile && (
-                <Button 
-                  variant="outlined" 
-                  fullWidth 
-                  sx={{ mt: 2 }}
-                  onClick={handleOpenPasswordDialog}
-                >
-                  Đổi mật khẩu
-                </Button>
-              )}
+              <Button 
+                variant="outlined" 
+                fullWidth 
+                sx={{ mt: 2 }}
+                onClick={handleOpenPasswordDialog}
+              >
+                Đổi mật khẩu
+              </Button>
             </Box>
           </Paper>
 
@@ -533,93 +523,91 @@ const Profile = () => {
                   </Alert>
                 )}
                 
-                {isOwnProfile && (
-                  <Box component="form" onSubmit={handleSubmit}>
-                    <Grid container spacing={3}>
-                      <Grid item xs={12}>
-                        <Typography variant="h6" gutterBottom>
-                          Chỉnh sửa thông tin
-                        </Typography>
-                      </Grid>
-                      
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label="Họ và tên"
-                          name="name"
-                          value={profileData.name}
-                          onChange={handleChange}
-                          variant="outlined"
-                          InputLabelProps={{ shrink: true }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label="Email"
-                          name="email"
-                          type="email"
-                          value={profileData.email}
-                          onChange={handleChange}
-                          variant="outlined"
-                          InputLabelProps={{ shrink: true }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label="Tên đăng nhập"
-                          name="username"
-                          value={profileData.username}
-                          variant="outlined"
-                          disabled
-                          InputLabelProps={{ shrink: true }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label="Mã số sinh viên"
-                          name="studentId"
-                          value={profileData.studentId}
-                          variant="outlined"
-                          disabled
-                          InputLabelProps={{ shrink: true }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12}>
-                        <TextField
-                          fullWidth
-                          label="Giới thiệu"
-                          name="bio"
-                          multiline
-                          rows={6}
-                          value={profileData.bio}
-                          onChange={handleChange}
-                          variant="outlined"
-                          placeholder="Viết một vài điều về bản thân..."
-                          InputLabelProps={{ shrink: true }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12}>
-                        <Button
-                          type="submit"
-                          variant="contained"
-                          startIcon={loadingUpdate ? <CircularProgress size={20} color="inherit" /> : <Save />}
-                          disabled={loadingUpdate}
-                          sx={{ borderRadius: 2 }}
-                        >
-                          {loadingUpdate ? 'Đang cập nhật...' : 'Lưu thay đổi'}
-                        </Button>
-                      </Grid>
+                <Box component="form" onSubmit={handleSubmit}>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12}>
+                      <Typography variant="h6" gutterBottom>
+                        Chỉnh sửa thông tin
+                      </Typography>
                     </Grid>
-                  </Box>
-                )}
+                    
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Họ và tên"
+                        name="name"
+                        value={profileData.name}
+                        onChange={handleChange}
+                        variant="outlined"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Email"
+                        name="email"
+                        type="email"
+                        value={profileData.email}
+                        onChange={handleChange}
+                        variant="outlined"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Tên đăng nhập"
+                        name="username"
+                        value={profileData.username}
+                        variant="outlined"
+                        disabled
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Mã số sinh viên"
+                        name="studentId"
+                        value={profileData.studentId}
+                        variant="outlined"
+                        disabled
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Giới thiệu"
+                        name="bio"
+                        multiline
+                        rows={6}
+                        value={profileData.bio}
+                        onChange={handleChange}
+                        variant="outlined"
+                        placeholder="Viết một vài điều về bản thân..."
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12}>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        startIcon={loadingUpdate ? <CircularProgress size={20} color="inherit" /> : <Save />}
+                        disabled={loadingUpdate}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        {loadingUpdate ? 'Đang cập nhật...' : 'Lưu thay đổi'}
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </Box>
               </Box>
             </TabPanel>
 

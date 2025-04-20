@@ -72,7 +72,7 @@ const getStudent = async (req, res) => {
 // Create a new student
 const createStudent = async (req, res) => {
   try {
-    const { username, password, name, email, major, className, status } = req.body;
+    const { username, password, name, major, className, status } = req.body;
     
     // Kiểm tra username đã tồn tại chưa
     const existingUser = await User.findOne({ username });
@@ -83,21 +83,23 @@ const createStudent = async (req, res) => {
       });
     }
     
-    // Tạo mã sinh viên tự động nếu không có
-    const studentId = `SV${Date.now().toString().slice(-8)}`;
+    // Tạo mã sinh viên tự động sử dụng hàm đã định nghĩa
+    const studentId = await generateStudentId();
     
-    // Tạo sinh viên mới
+    // Tạo sinh viên mới (không cần email trong request body)
     const newStudent = new User({
       username,
       password,
       name,
-      email,
       role: 'student',
       studentId,
       major,
       class: className, // Sử dụng 'class' trong DB nhưng className trong request để tránh từ khóa 'class'
       status: status || 'active'
     });
+    
+    // Tạo email tự động từ mã sinh viên và tên
+    newStudent.email = newStudent.generateStudentEmail();
     
     await newStudent.save();
     

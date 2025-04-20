@@ -64,6 +64,8 @@ app.use('/api/forum', require('./routes/forumRoutes'));
 app.use('/api/students', require('./routes/studentRoutes'));
 // Admin management routes
 app.use('/api/admins', require('./routes/adminRoutes'));
+// Course management routes
+app.use('/api/courses', require('./routes/courseRoutes'));
 
 // Xử lý lỗi
 app.use((err, req, res, next) => {

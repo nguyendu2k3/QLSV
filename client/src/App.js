@@ -12,6 +12,7 @@ import Home from './pages/Home';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import Profile from './pages/Profile';
+import UserProfile from './pages/UserProfile';
 import Forum from './pages/Forum';
 import PostDetail from './pages/PostDetail';
 import Dashboard from './pages/Dashboard';
@@ -322,6 +323,11 @@ function App() {
               <Route path="/profile" element={
                 <PrivateRoute>
                   <Profile />
+                </PrivateRoute>
+              } />
+              <Route path="/profile/:userId" element={
+                <PrivateRoute>
+                  <UserProfile />
                 </PrivateRoute>
               } />
               <Route path="/forum" element={

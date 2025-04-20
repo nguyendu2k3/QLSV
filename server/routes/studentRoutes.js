@@ -11,7 +11,7 @@ const {
 } = require('../controllers/studentController');
 
 // Get student statistics - QUAN TRỌNG: đặt trước route /:id để tránh bị nhầm lẫn pattern
-router.get('/stats', protect, authorize('admin', 'superAdmin'), getStudentStats);
+router.get('/stats', protect, authorize('admin', 'superAdmin', 'student'), getStudentStats);
 
 // Get all students - accessible by admin and superAdmin
 router.get('/', protect, authorize('admin', 'superAdmin', 'teacher'), getAllStudents);

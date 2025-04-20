@@ -21,7 +21,8 @@ import {
   Collapse,
   Grid,
   Snackbar,
-  Alert
+  Alert,
+  Tooltip
 } from '@mui/material';
 import { 
   ThumbUp, 
@@ -41,17 +42,20 @@ import {
   Notifications,
   NotificationsOff,
   RemoveRedEye,
-  ArrowForward
+  ArrowForward,
+  Person
 } from '@mui/icons-material';
 import moment from 'moment';
 import 'moment/locale/vi';
 import { getAvatarUrl, getMediaUrl, forumAPI } from '../../utils/api';
 import CommentSection from './CommentSection';
+import { useNavigate } from 'react-router-dom';
 
 moment.locale('vi');
 
 const ForumPost = ({ post, onViewDetails, onLikePost, onDeletePost, currentUser }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(post.userLiked || false);
@@ -74,8 +78,19 @@ const ForumPost = ({ post, onViewDetails, onLikePost, onDeletePost, currentUser 
     });
   }
 
+  // Thêm debug log để xác định cấu trúc dữ liệu chính xác
+  useEffect(() => {
+    // In thông tin chi tiết về author để phân tích cấu trúc
+    console.log('Author structure for debugging:', post.author);
+    if (post.author) {
+      console.log('Author ID (_id):', post.author._id);
+      console.log('Author ID (id):', post.author.id);
+      console.log('All author properties:', Object.keys(post.author));
+    }
+  }, [post.author]);
+
   // Check if user is author or admin for post deletion
-  const isAuthor = currentUser && post.author && currentUser.id === post.author.id;
+  const isAuthor = currentUser && post.author && currentUser.id === post.author._id;
   const canDelete = forumAPI.canDeletePost(post, currentUser);
   const isOfficial = post.isOfficial || false;
   const isPinned = post.isPinned || false;
@@ -116,6 +131,54 @@ const ForumPost = ({ post, onViewDetails, onLikePost, onDeletePost, currentUser 
 
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
+  };
+
+  // Thêm debug log để in ra thông tin author
+  console.log('Author information:', post.author);
+
+  // Xử lý xem hồ sơ người dùng
+  const handleViewUserProfile = (e) => {
+    e.stopPropagation();
+    console.log('Clicking view profile, author data:', post.author);
+    
+    // Kiểm tra người dùng đã đăng nhập chưa
+    if (!currentUser) {
+      // Hiển thị thông báo yêu cầu đăng nhập
+      setSnackbarMessage('Vui lòng đăng nhập để xem hồ sơ người dùng');
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    // Kiểm tra và lấy ID theo thứ tự ưu tiên
+    let authorId = null;
+    if (post.author) {
+      // MongoDB thường sử dụng _id làm khóa chính
+      if (post.author._id) {
+        authorId = post.author._id;
+        console.log('Using author._id:', authorId);
+      } 
+      // Các hệ thống khác có thể sử dụng id
+      else if (post.author.id) {
+        authorId = post.author.id;
+        console.log('Using author.id:', authorId);
+      }
+      // Nếu nhận được là một chuỗi ID thay vì một object
+      else if (typeof post.author === 'string') {
+        authorId = post.author;
+        console.log('Using author as string ID:', authorId);
+      }
+    }
+    
+    if (authorId) {
+      console.log('Navigating to profile with ID:', authorId);
+      navigate(`/profile/${authorId}`);
+    } else {
+      console.error('Không tìm thấy ID của tác giả:', post.author);
+      setSnackbarMessage('Không thể xem hồ sơ người dùng này');
+      setSnackbarOpen(true);
+    }
+    
+    handleMenuClose();
   };
 
   // Format thời gian hiển thị thân thiện
@@ -238,20 +301,45 @@ const ForumPost = ({ post, onViewDetails, onLikePost, onDeletePost, currentUser 
 
       <CardHeader
         avatar={
-          <Avatar 
-            src={getAvatarUrl(post.author?.avatar)} 
-            sx={{ 
-              width: 48, 
-              height: 48,
-              border: isOfficial ? `2px solid ${theme.palette.primary.main}` : 'none'
-            }}
-          >
-            {post.author?.name?.charAt(0) || "U"}
-          </Avatar>
+          <Tooltip title="Xem hồ sơ người dùng">
+            <Avatar 
+              src={getAvatarUrl(post.author?.avatar)} 
+              sx={{ 
+                width: 48, 
+                height: 48,
+                border: isOfficial ? `2px solid ${theme.palette.primary.main}` : 'none',
+                cursor: 'pointer'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (post.author && post.author._id) {
+                  navigate(`/profile/${post.author._id}`);
+                }
+              }}
+            >
+              {post.author?.name?.charAt(0) || "U"}
+            </Avatar>
+          </Tooltip>
         }
         title={
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="subtitle1" fontWeight="medium" sx={{ lineHeight: 1.3 }}>
+            <Typography 
+              variant="subtitle1" 
+              fontWeight="medium" 
+              sx={{ 
+                lineHeight: 1.3,
+                cursor: 'pointer',
+                '&:hover': {
+                  textDecoration: 'underline'
+                }
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (post.author && post.author._id) {
+                  navigate(`/profile/${post.author._id}`);
+                }
+              }}
+            >
               {post.author?.name || "Người dùng ẩn danh"}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -316,6 +404,18 @@ const ForumPost = ({ post, onViewDetails, onLikePost, onDeletePost, currentUser 
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
+              {/* Thêm menu item xem hồ sơ người dùng */}
+              <MenuItem onClick={handleViewUserProfile}>
+                <ListItemIcon>
+                  <Person fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>
+                  Xem hồ sơ {post.author?.name || "người dùng"}
+                </ListItemText>
+              </MenuItem>
+              
+              <Divider />
+              
               <MenuItem onClick={handleBookmarkClick}>
                 <ListItemIcon>
                   {bookmarked ? <Bookmark fontSize="small" /> : <BookmarkBorder fontSize="small" />}

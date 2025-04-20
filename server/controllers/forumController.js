@@ -228,8 +228,37 @@ const getPosts = async (req, res) => {
   try {
     const userId = req.user?.id; // Optional: user might not be authenticated
     
-    const posts = await ForumPost.find()
+    // Xử lý các tham số truy vấn
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const category = req.query.category;
+    const search = req.query.search;
+    
+    console.log(`Lấy danh sách bài viết với: page=${page}, limit=${limit}, category=${category || 'all'}, search=${search || 'none'}`);
+    
+    // Xây dựng query
+    let query = {};
+    
+    if (category) {
+      query.category = category;
+    }
+    
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    // Lấy tổng số bài viết để tính pagination
+    const total = await ForumPost.countDocuments(query);
+    
+    // Lấy danh sách bài viết theo các tiêu chí lọc
+    const posts = await ForumPost.find(query)
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .populate('author', 'name username avatar')
       .populate('comments.author', 'name username avatar');
     
@@ -243,7 +272,17 @@ const getPosts = async (req, res) => {
       return postObj;
     });
     
-    res.json(result);
+    // Trả về kết quả với thông tin phân trang
+    res.json({
+      success: true,
+      data: result,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     console.error('Lỗi khi lấy danh sách bài viết:', error);
     res.status(500).json({

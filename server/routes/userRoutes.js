@@ -4,12 +4,14 @@ const {
   register,
   login,
   getProfile,
-  getUserProfile,
   updateProfile,
   uploadAvatar,
   changePassword,
   getUserPosts,
-  getUserPostsById
+  getUserById,
+  getUserPostsById,
+  followUser,
+  unfollowUser
 } = require('../controllers/userController');
 const { protect } = require('../middleware/auth');
 const multer = require('multer');
@@ -47,11 +49,15 @@ const upload = multer({
 router.post('/register', register);
 router.post('/login', login);
 router.get('/profile', protect, getProfile);
-router.get('/profile/:userId', protect, getUserProfile); // Route để xem profile người dùng khác
 router.put('/profile', protect, updateProfile);
 router.post('/avatar', protect, upload.single('avatar'), uploadAvatar);
 router.post('/change-password', protect, changePassword);
 router.get('/posts', protect, getUserPosts);
-router.get('/posts/:userId', protect, getUserPostsById); // Route để xem bài viết của người dùng khác
+
+// Routes mới cho xem hồ sơ người dùng khác
+router.get('/:userId', protect, getUserById);
+router.get('/:userId/posts', protect, getUserPostsById);
+router.post('/:userId/follow', protect, followUser);
+router.post('/:userId/unfollow', protect, unfollowUser);
 
 module.exports = router;

@@ -94,7 +94,7 @@ const Home = () => {
       });
       promises.push(forumStatsPromise);
       
-      const recentPostsPromise = forumAPI.getPosts().catch(err => {
+      const recentPostsPromise = forumAPI.getPosts({limit: 5}).catch(err => {
         console.warn('Không thể tải bài viết gần đây:', err);
         return { data: { data: [] } };
       });
@@ -106,6 +106,8 @@ const Home = () => {
       forumStats = forumStatsResponse.data;
       recentPosts = recentPostsResponse.data.data || [];
       
+      console.log('Recent posts response:', recentPostsResponse);
+      
       setStatistics({
         studentCount: studentStats.totalStudents || 145,
         postCount: forumStats.totalPosts || 78,
@@ -113,7 +115,7 @@ const Home = () => {
         assignmentCount: studentStats.totalAssignments || 45,
         newStudentsThisMonth: studentStats.newStudentsThisMonth || 12,
         activeStudents: studentStats.activeStudents || 128,
-        recentPosts: recentPosts.slice(0, 5) || [],
+        recentPosts: recentPosts || [],
         events: [
           { 
             title: 'Đăng ký học phần học kỳ 2 năm 2024-2025', 

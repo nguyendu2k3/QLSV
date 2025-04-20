@@ -44,7 +44,7 @@ export const getMediaUrl = (mediaPath) => {
 };
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:5000/api', // Thay đổi baseURL để trỏ trực tiếp đến server
   headers: {
     'Content-Type': 'application/json'
   }
@@ -92,7 +92,7 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
-  getProfile: (userId) => userId ? api.get(`/users/profile/${userId}`) : api.get('/users/profile'),
+  getProfile: () => api.get('/users/profile'),
   updateProfile: (data) => api.put('/users/profile', data),
   uploadAvatar: (formData) => api.post('/users/avatar', formData, {
     headers: {
@@ -101,13 +101,89 @@ export const authAPI = {
   }),
   // Thêm API để thay đổi mật khẩu
   changePassword: (data) => api.post('/users/change-password', data),
-  // Lấy bài đăng của người dùng (nếu có userId thì lấy của user đó, không thì lấy của user hiện tại)
-  getUserPosts: (userId) => userId ? api.get(`/users/posts/${userId}`) : api.get('/users/posts')
+  // Lấy bài đăng của người dùng hiện tại
+  getUserPosts: () => api.get('/users/posts')
+};
+
+export const studentAPI = {
+  // Lấy tất cả sinh viên
+  getAllStudents: () => api.get('/students'),
+  
+  // Lấy thông tin sinh viên theo ID
+  getStudent: (id) => api.get(`/students/${id}`),
+  
+  // Tạo sinh viên mới
+  createStudent: (data) => api.post('/students', data),
+  
+  // Cập nhật thông tin sinh viên
+  updateStudent: (id, data) => api.put(`/students/${id}`, data),
+  
+  // Xóa sinh viên
+  deleteStudent: (id) => api.delete(`/students/${id}`),
+  
+  // Lấy thống kê sinh viên
+  getStudentStats: () => api.get('/students/stats')
+};
+
+export const courseAPI = {
+  // Lấy tất cả khóa học với tùy chọn filter
+  getAllCourses: (filters) => {
+    const queryParams = new URLSearchParams();
+    if (filters) {
+      if (filters.semester) queryParams.append('semester', filters.semester);
+      if (filters.status) queryParams.append('status', filters.status);
+      if (filters.department) queryParams.append('department', filters.department);
+    }
+    const queryString = queryParams.toString();
+    return api.get(`/courses${queryString ? '?' + queryString : ''}`);
+  },
+  
+  // Lấy thông tin chi tiết của một khóa học
+  getCourse: (id) => api.get(`/courses/${id}`),
+  
+  // Tạo khóa học mới (dành cho admin, teacher)
+  createCourse: (data) => api.post('/courses', data),
+  
+  // Cập nhật thông tin khóa học
+  updateCourse: (id, data) => api.put(`/courses/${id}`, data),
+  
+  // Xóa khóa học
+  deleteCourse: (id) => api.delete(`/courses/${id}`),
+  
+  // Đăng ký khóa học (dành cho sinh viên)
+  registerCourse: (courseId, data) => api.post(`/courses/${courseId}/register`, data || {}),
+  
+  // Hủy đăng ký khóa học (dành cho sinh viên)
+  unregisterCourse: (courseId) => api.delete(`/courses/${courseId}/register`),
+  
+  // Lấy danh sách khóa học đã đăng ký của sinh viên hiện tại
+  getMyRegisteredCourses: (filters) => {
+    const queryParams = new URLSearchParams();
+    if (filters) {
+      if (filters.semester) queryParams.append('semester', filters.semester);
+      if (filters.status) queryParams.append('status', filters.status);
+    }
+    const queryString = queryParams.toString();
+    return api.get(`/courses/my-courses${queryString ? '?' + queryString : ''}`);
+  },
+  
+  // Lấy thống kê về khóa học
+  getCourseStats: () => api.get('/courses/stats')
 };
 
 export const forumAPI = {
-  // Lấy danh sách bài viết 
-  getPosts: () => api.get('/forum/posts'),
+  // Lấy danh sách bài viết với hỗ trợ tham số lọc và phân trang
+  getPosts: (params) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      if (params.limit) queryParams.append('limit', params.limit);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.category) queryParams.append('category', params.category);
+      if (params.search) queryParams.append('search', params.search);
+    }
+    const queryString = queryParams.toString();
+    return api.get(`/forum/posts${queryString ? '?' + queryString : ''}`);
+  },
   
   // Lấy chi tiết bài viết theo ID
   getPostById: (postId) => api.get(`/forum/posts/${postId}`),

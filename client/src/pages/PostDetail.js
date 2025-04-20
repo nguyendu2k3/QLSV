@@ -145,6 +145,50 @@ const PostDetail = () => {
     incrementViewCount();
   }, [postId, fetchPostDetail]);
 
+  const handleViewUserProfile = () => {
+    // Kiểm tra người dùng đã đăng nhập chưa
+    if (!user) {
+      setSnackbar({
+        open: true,
+        message: 'Vui lòng đăng nhập để xem hồ sơ người dùng',
+        severity: 'warning'
+      });
+      return;
+    }
+    
+    // Kiểm tra và lấy ID theo thứ tự ưu tiên
+    let authorId = null;
+    if (post.author) {
+      // MongoDB thường sử dụng _id làm khóa chính
+      if (post.author._id) {
+        authorId = post.author._id;
+        console.log('Using author._id:', authorId);
+      } 
+      // Các hệ thống khác có thể sử dụng id
+      else if (post.author.id) {
+        authorId = post.author.id;
+        console.log('Using author.id:', authorId);
+      }
+      // Nếu nhận được là một chuỗi ID thay vì một object
+      else if (typeof post.author === 'string') {
+        authorId = post.author;
+        console.log('Using author as string ID:', authorId);
+      }
+    }
+    
+    if (authorId) {
+      console.log('Navigating to profile with ID:', authorId);
+      navigate(`/profile/${authorId}`);
+    } else {
+      console.error('Không tìm thấy ID của tác giả:', post.author);
+      setSnackbar({
+        open: true,
+        message: 'Không thể xem hồ sơ người dùng này',
+        severity: 'error'
+      });
+    }
+  };
+
   const handleLikePost = async () => {
     try {
       if (liked) {
@@ -652,8 +696,7 @@ const PostDetail = () => {
                   <Button
                     variant="outlined"
                     fullWidth
-                    component={Link}
-                    to={`/profile/${post.author?._id}`}
+                    onClick={handleViewUserProfile}
                     sx={{ 
                       borderRadius: 2, 
                       textTransform: 'none',
