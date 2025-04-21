@@ -43,6 +43,33 @@ export const getMediaUrl = (mediaPath) => {
   return formattedPath;
 };
 
+// Hàm tiện ích để hiển thị hình ảnh từ dữ liệu nhị phân trong database
+export const getBinaryImageUrl = (imageData) => {
+  if (!imageData || !imageData.data || !imageData.contentType) return null;
+  
+  try {
+    // Chuyển đổi từ Buffer sang base64 string
+    let base64String;
+    if (typeof imageData.data === 'string') {
+      // Nếu đã là string (có thể đã được chuyển đổi từ server)
+      base64String = imageData.data;
+    } else if (Array.isArray(imageData.data)) {
+      // Nếu là array (Buffer.data)
+      base64String = Buffer.from(imageData.data).toString('base64');
+    } else {
+      // Trường hợp khác - có thể là đối tượng đặc biệt
+      console.warn('Unsupported image data format', typeof imageData.data);
+      return null;
+    }
+    
+    // Tạo data URL với content type và chuỗi base64
+    return `data:${imageData.contentType};base64,${base64String}`;
+  } catch (error) {
+    console.error('Error converting binary image to URL:', error);
+    return null;
+  }
+};
+
 const api = axios.create({
   baseURL: 'http://localhost:5000/api', // Thay đổi baseURL để trỏ trực tiếp đến server
   headers: {
@@ -244,14 +271,44 @@ export const forumAPI = {
     return api.post(`/forum/posts/${postId}/comments`, commentData, config);
   },
   
+  // Thêm comment với ảnh lưu trực tiếp vào database
+  addCommentWithImageInDB: (commentData, onUploadProgress) => {
+    // Kiểm tra xem commentData có phải là FormData không
+    const isFormData = commentData instanceof FormData;
+    
+    // Nếu là FormData (có ảnh đính kèm), sử dụng Content-Type là multipart/form-data
+    const config = isFormData ? {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onUploadProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onUploadProgress(percentCompleted);
+      } : undefined
+    } : {};
+    
+    const postId = isFormData ? commentData.get('postId') : commentData.postId;
+    
+    return api.post(`/forum/posts/${postId}/comments-with-db-image`, commentData, config);
+  },
+  
   // Like comment
   likeComment: (postId, commentId) => api.post(`/forum/posts/${postId}/comments/${commentId}/like`),
   
   // Xóa comment
   deleteComment: (postId, commentId) => api.delete(`/forum/posts/${postId}/comments/${commentId}`),
   
-  // Thêm API để tải lên các loại media
+  // Thêm API để tải lên các loại media vào filesystem (phương thức cũ)
   uploadImages: (formData, onUploadProgress) => api.post('/forum/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    onUploadProgress: onUploadProgress ? (progressEvent) => {
+      const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+      onUploadProgress(percentCompleted);
+    } : undefined
+  }),
+  
+  // Thêm API mới để tải lên các loại media trực tiếp vào database
+  uploadImagesToDb: (formData, onUploadProgress) => api.post('/forum/upload-to-db', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     },

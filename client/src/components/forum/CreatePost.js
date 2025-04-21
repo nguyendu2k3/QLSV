@@ -24,7 +24,9 @@ import {
   InputLabel,
   Select,
   Alert,
-  Snackbar
+  Snackbar,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import {
   Close,
@@ -33,7 +35,7 @@ import {
   VideoCall,
   Attachment
 } from '@mui/icons-material';
-import { getAvatarUrl, getMediaUrl, forumAPI } from '../../utils/api';
+import { getAvatarUrl, getMediaUrl, forumAPI, getBinaryImageUrl } from '../../utils/api';
 
 const CreatePost = ({ open, onClose, onSubmit, categories, userData }) => {
   const theme = useTheme();
@@ -57,6 +59,7 @@ const CreatePost = ({ open, onClose, onSubmit, categories, userData }) => {
   const [error, setError] = useState('');
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [storeInDB, setStoreInDB] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -127,10 +130,14 @@ const CreatePost = ({ open, onClose, onSubmit, categories, userData }) => {
         formData.append('images', file);
       });
 
-      // Gọi API để tải lên ảnh
-      const response = await forumAPI.uploadImages(formData, (progress) => {
-        setUploadProgress(progress);
-      });
+      // Gọi API dựa vào chế độ lưu trữ được chọn
+      const response = storeInDB 
+        ? await forumAPI.uploadImagesToDb(formData, (progress) => {
+            setUploadProgress(progress);
+          })
+        : await forumAPI.uploadImages(formData, (progress) => {
+            setUploadProgress(progress);
+          });
 
       console.log('Phản hồi từ server:', response.data);
 
@@ -138,13 +145,23 @@ const CreatePost = ({ open, onClose, onSubmit, categories, userData }) => {
         const uploadedImages = response.data.data.images || [];
         console.log('Ảnh đã tải lên thành công:', uploadedImages);
 
-        // Make sure we get the complete URL for images
+        // Xử lý khác nhau cho ảnh lưu trong DB và ảnh lưu file system
         const newPreviewImages = uploadedImages.map(image => {
-          console.log('Image URL before processing:', image.url);
-          const fullUrl = getMediaUrl(image.url);
-          console.log('Full image URL after processing:', fullUrl);
-          return fullUrl;
-        });
+          if (storeInDB && image.data) {
+            // Nếu là ảnh lưu trong DB, tạo URL từ dữ liệu nhị phân
+            return URL.createObjectURL(
+              new Blob([new Uint8Array(image.data.data || [])], { type: image.contentType })
+            );
+          } else if (image.url) {
+            // Nếu là URL, xử lý như trước
+            console.log('Image URL before processing:', image.url);
+            const fullUrl = getMediaUrl(image.url);
+            console.log('Full image URL after processing:', fullUrl);
+            return fullUrl;
+          }
+          return null; // Trường hợp không có dữ liệu
+        }).filter(url => url !== null);
+        
         setPreviewImages(prevImages => [...prevImages, ...newPreviewImages]);
         
         // Đảm bảo formData.images là một mảng trước khi cập nhật
@@ -358,6 +375,106 @@ const CreatePost = ({ open, onClose, onSubmit, categories, userData }) => {
     setShowSnackbar(false);
   };
 
+  const handleStoreInDBChange = (event) => {
+    setStoreInDB(event.target.checked);
+  };
+
+  const renderImagePreview = (image, index) => {
+    // Xử lý khác nhau cho ảnh lưu trong DB và ảnh lưu file system
+    if (storeInDB && image.data) {
+      // Tạo URL từ dữ liệu nhị phân
+      const imageUrl = URL.createObjectURL(
+        new Blob([new Uint8Array(image.data.data || [])], { type: image.contentType })
+      );
+      
+      return (
+        <Box 
+          key={index} 
+          sx={{ 
+            position: 'relative',
+            width: 100,
+            height: 100,
+            borderRadius: 2,
+            overflow: 'hidden'
+          }}
+        >
+          <img 
+            src={imageUrl}
+            alt={image.name || `Image ${index}`} 
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={(e) => {
+              console.error("Lỗi tải ảnh:", e);
+              e.target.onerror = null;
+              e.target.src = 'https://via.placeholder.com/100?text=Lỗi';
+            }}
+          />
+          <IconButton
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              color: 'white',
+              p: 0.5,
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)'
+              }
+            }}
+            onClick={() => removeMedia('image', index)}
+          >
+            <Close fontSize="small" />
+          </IconButton>
+        </Box>
+      );
+    } else if (image.url) {
+      // Xử lý hình ảnh có URL
+      return (
+        <Box 
+          key={index} 
+          sx={{ 
+            position: 'relative',
+            width: 100,
+            height: 100,
+            borderRadius: 2,
+            overflow: 'hidden'
+          }}
+        >
+          <img 
+            src={image.url ? `http://localhost:5000/${image.url.replace(/^\/+/, '')}` : ''}
+            alt={image.name || `Image ${index}`} 
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={(e) => {
+              console.error("Lỗi tải ảnh:", e);
+              console.error("URL ảnh:", image.url);
+              e.target.onerror = null;
+              e.target.src = 'https://via.placeholder.com/100?text=Lỗi';
+            }}
+          />
+          <IconButton
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              color: 'white',
+              p: 0.5,
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)'
+              }
+            }}
+            onClick={() => removeMedia('image', index)}
+          >
+            <Close fontSize="small" />
+          </IconButton>
+        </Box>
+      );
+    }
+    
+    return null;
+  };
+
   return (
     <Dialog 
       open={open} 
@@ -472,6 +589,19 @@ const CreatePost = ({ open, onClose, onSubmit, categories, userData }) => {
                 }}
               />
               
+              {/* Tùy chọn lưu trữ hình ảnh */}
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={storeInDB}
+                    onChange={handleStoreInDBChange}
+                    color="primary"
+                  />
+                }
+                label="Lưu hình ảnh trực tiếp vào cơ sở dữ liệu"
+                sx={{ mb: 2 }}
+              />
+              
               {/* Preview uploaded images */}
               {formData.images.length > 0 && (
                 <Box sx={{ mt: 3, mb: 2 }}>
@@ -479,47 +609,7 @@ const CreatePost = ({ open, onClose, onSubmit, categories, userData }) => {
                     Hình ảnh đã tải lên
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {formData.images.map((image, index) => (
-                      <Box 
-                        key={index} 
-                        sx={{ 
-                          position: 'relative',
-                          width: 100,
-                          height: 100,
-                          borderRadius: 2,
-                          overflow: 'hidden'
-                        }}
-                      >
-                        <img 
-                          src={image.url ? `http://localhost:5000/${image.url.replace(/^\/+/, '')}` : ''}
-                          alt={image.name || `Image ${index}`} 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => {
-                            console.error("Lỗi tải ảnh:", e);
-                            console.error("URL ảnh:", image.url);
-                            e.target.onerror = null;
-                            e.target.src = 'https://via.placeholder.com/100?text=Lỗi';
-                          }}
-                        />
-                        <IconButton
-                          size="small"
-                          sx={{
-                            position: 'absolute',
-                            top: 4,
-                            right: 4,
-                            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                            color: 'white',
-                            p: 0.5,
-                            '&:hover': {
-                              backgroundColor: 'rgba(0, 0, 0, 0.8)'
-                            }
-                          }}
-                          onClick={() => removeMedia('image', index)}
-                        >
-                          <Close fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    ))}
+                    {formData.images.map((image, index) => renderImagePreview(image, index))}
                   </Box>
                 </Box>
               )}

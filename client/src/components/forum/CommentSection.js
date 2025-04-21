@@ -16,7 +16,9 @@ import {
   InputAdornment,
   CircularProgress,
   LinearProgress,
-  Divider
+  Divider,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   Send,
@@ -25,9 +27,10 @@ import {
   MoreVert,
   Delete,
   Flag,
-  InsertPhoto
+  InsertPhoto,
+  Storage
 } from '@mui/icons-material';
-import { forumAPI, getAvatarUrl } from '../../utils/api';
+import { forumAPI, getAvatarUrl, getBinaryImageUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import moment from 'moment';
 import 'moment/locale/vi';
@@ -46,6 +49,7 @@ const CommentSection = ({ postId, comments = [], onCommentAdded }) => {
   const [commentImage, setCommentImage] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [storeInDB, setStoreInDB] = useState(false);
 
   const commentInputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -108,9 +112,13 @@ const CommentSection = ({ postId, comments = [], onCommentAdded }) => {
         formData.append('commentImage', commentImage);
       }
 
-      const response = await forumAPI.addComment(formData, (progress) => {
-        setUploadProgress(progress);
-      });
+      const response = storeInDB 
+        ? await forumAPI.addCommentWithImageInDB(formData, (progress) => {
+            setUploadProgress(progress);
+          })
+        : await forumAPI.addComment(formData, (progress) => {
+            setUploadProgress(progress);
+          });
 
       if (response.data && response.data.success) {
         const newComment = response.data.data;
@@ -174,26 +182,37 @@ const CommentSection = ({ postId, comments = [], onCommentAdded }) => {
     return date.fromNow();
   };
 
-  const getCommentImageUrl = (imagePath) => {
-    if (!imagePath) return null;
-
-    if (imagePath.startsWith('http')) {
-      return imagePath;
+  const getCommentImageUrl = (comment) => {
+    if (comment.imageData && comment.imageData.data) {
+      return URL.createObjectURL(
+        new Blob(
+          [new Uint8Array(comment.imageData.data.data || [])], 
+          { type: comment.imageData.contentType }
+        )
+      );
     }
+    
+    if (comment.image) {
+      if (comment.image.startsWith('http')) {
+        return comment.image;
+      }
 
-    const filename = imagePath.split('/').pop();
-    return `http://localhost:5000/uploads/comments/${filename}`;
+      const filename = comment.image.split('/').pop();
+      return `http://localhost:5000/uploads/comments/${filename}`;
+    }
+    
+    return null;
   };
 
   const renderComment = (comment) => {
     const isHovered = hoveredComment === comment._id;
-    // Debug info
     console.log("Comment author data:", comment.author);
     console.log("Avatar path:", comment.author?.avatar);
     
-    // Xử lý avatar URL
     const avatarUrl = comment.author?.avatar ? getAvatarUrl(comment.author.avatar) : null;
     console.log("Processed avatar URL:", avatarUrl);
+    
+    const commentImageUrl = getCommentImageUrl(comment);
     
     return (
       <Box
@@ -248,7 +267,7 @@ const CommentSection = ({ postId, comments = [], onCommentAdded }) => {
                 {comment.content}
               </Typography>
 
-              {comment.image && (
+              {commentImageUrl && (
                 <Box
                   sx={{
                     mt: 1,
@@ -260,7 +279,7 @@ const CommentSection = ({ postId, comments = [], onCommentAdded }) => {
                 >
                   <Box
                     component="img"
-                    src={getCommentImageUrl(comment.image)}
+                    src={commentImageUrl}
                     alt="Comment image"
                     sx={{
                       maxWidth: '100%',
@@ -268,9 +287,9 @@ const CommentSection = ({ postId, comments = [], onCommentAdded }) => {
                       borderRadius: 2,
                       cursor: 'pointer'
                     }}
-                    onClick={() => window.open(getCommentImageUrl(comment.image), '_blank')}
+                    onClick={() => window.open(commentImageUrl, '_blank')}
                     onError={(e) => {
-                      console.error("Lỗi tải ảnh bình luận:", comment.image);
+                      console.error("Lỗi tải ảnh bình luận");
                       e.target.onerror = null;
                       e.target.src = 'https://via.placeholder.com/300?text=Không+tải+được+ảnh';
                     }}
@@ -310,6 +329,10 @@ const CommentSection = ({ postId, comments = [], onCommentAdded }) => {
         </Box>
       </Box>
     );
+  };
+
+  const handleStoreInDBChange = (event) => {
+    setStoreInDB(event.target.checked);
   };
 
   return (
@@ -380,6 +403,24 @@ const CommentSection = ({ postId, comments = [], onCommentAdded }) => {
             ref={fileInputRef}
             onChange={handleImageChange}
           />
+
+          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={storeInDB}
+                  onChange={handleStoreInDBChange}
+                  size="small"
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Storage fontSize="small" sx={{ mr: 0.5 }} />
+                  <Typography variant="caption">Lưu ảnh trực tiếp vào database</Typography>
+                </Box>
+              }
+            />
+          </Box>
 
           {imagePreview && (
             <Box sx={{ mt: 2, position: 'relative', display: 'inline-block' }}>
