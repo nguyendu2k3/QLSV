@@ -33,6 +33,10 @@ const forumPostSchema = new mongoose.Schema({
     image: {
       type: String  // URL của hình ảnh đính kèm
     },
+    imageData: {
+      data: Buffer,
+      contentType: String
+    },
     createdAt: {
       type: Date,
       default: Date.now
@@ -48,14 +52,19 @@ const forumPostSchema = new mongoose.Schema({
   }],
   images: [{
     url: {
-      type: String,
-      required: true
+      type: String
     },
     name: {
       type: String,
       default: 'image.jpg'
     },
-    caption: String
+    caption: String,
+    data: {
+      type: Buffer  // Lưu trữ dữ liệu nhị phân của hình ảnh
+    },
+    contentType: {
+      type: String  // Loại nội dung của hình ảnh (ví dụ: image/jpeg, image/png)
+    }
   }],
   videos: [{
     url: {

@@ -54,8 +54,22 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
+// Cấu hình multer cho việc lưu trữ trong bộ nhớ (để lưu trực tiếp vào DB)
+const memoryStorage = multer.memoryStorage();
+const uploadToMemory = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
+
 // Khai báo tất cả các hàm sẽ được xuất
 const uploadFiles = upload.fields([
+  { name: 'images', maxCount: 5 },
+  { name: 'videos', maxCount: 2 },
+  { name: 'attachments', maxCount: 5 }
+]);
+
+// Middleware để upload trực tiếp vào DB
+const uploadFilesToDB = uploadToMemory.fields([
   { name: 'images', maxCount: 5 },
   { name: 'videos', maxCount: 2 },
   { name: 'attachments', maxCount: 5 }
@@ -98,6 +112,18 @@ const uploadCommentImage = multer({
     cb(null, true);
   }
 }).single('commentImage'); // Tên field chứa file hình ảnh
+
+// Cấu hình multer để upload ảnh bình luận vào memory (cho DB)
+const uploadCommentImageToMemory = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Giới hạn 5MB
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Chỉ chấp nhận file hình ảnh!'), false);
+    }
+    cb(null, true);
+  }
+}).single('commentImage');
 
 // Tạo bài viết mới
 const createPost = async (req, res) => {
@@ -218,6 +244,84 @@ const uploadMediaFiles = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi khi tải lên tệp',
+      error: error.message
+    });
+  }
+};
+
+// Upload files trực tiếp vào database
+const uploadMediaFilesToDB = async (req, res) => {
+  try {
+    console.log('Bắt đầu xử lý tải lên file trực tiếp vào DB');
+    
+    if (!req.files || Object.keys(req.files).length === 0) {
+      console.log('Không có file nào được gửi lên');
+      return res.status(400).json({
+        success: false,
+        message: 'Không có file nào được tải lên'
+      });
+    }
+    
+    const files = req.files;
+    console.log('Files được gửi lên:', Object.keys(files).map(key => `${key}: ${files[key].length} file(s)`));
+    
+    const uploadResults = {
+      images: [],
+      videos: [],
+      attachments: []
+    };
+
+    // Xử lý hình ảnh
+    if (files.images) {
+      console.log(`Đang xử lý ${files.images.length} hình ảnh`);
+      files.images.forEach(file => {
+        console.log(`Đã tải lên hình ảnh: ${file.originalname}`);
+        uploadResults.images.push({
+          name: file.originalname,
+          size: file.size,
+          data: file.buffer,
+          contentType: file.mimetype
+        });
+      });
+    }
+
+    // Xử lý video
+    if (files.videos) {
+      console.log(`Đang xử lý ${files.videos.length} video`);
+      files.videos.forEach(file => {
+        console.log(`Đã tải lên video: ${file.originalname}`);
+        uploadResults.videos.push({
+          url: `/uploads/videos/${file.filename}`, // Vẫn lưu video dưới dạng file
+          name: file.originalname,
+          size: file.size
+        });
+      });
+    }
+
+    // Xử lý tệp đính kèm
+    if (files.attachments) {
+      console.log(`Đang xử lý ${files.attachments.length} tệp đính kèm`);
+      files.attachments.forEach(file => {
+        console.log(`Đã tải lên tệp đính kèm: ${file.originalname}`);
+        uploadResults.attachments.push({
+          url: `/uploads/attachments/${file.filename}`, // Vẫn lưu đính kèm dưới dạng file
+          name: file.originalname,
+          size: file.size,
+          type: file.mimetype
+        });
+      });
+    }
+
+    console.log('Hoàn thành xử lý tải lên tệp vào DB');
+    res.status(200).json({
+      success: true,
+      data: uploadResults
+    });
+  } catch (error) {
+    console.error('Lỗi khi tải lên tệp vào DB:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi tải lên tệp vào DB',
       error: error.message
     });
   }
@@ -397,7 +501,16 @@ const addComment = async (req, res) => {
 
     // Thêm đường dẫn ảnh nếu có upload ảnh
     if (req.file) {
+      // Nếu lưu vào filesystem
       comment.image = `/uploads/comments/${req.file.filename}`;
+      
+      // Nếu lưu vào DB trực tiếp
+      if (req.body.storeInDB === 'true' && req.file.buffer) {
+        comment.imageData = {
+          data: req.file.buffer,
+          contentType: req.file.mimetype
+        };
+      }
     } else if (!req.body.content || req.body.content.trim() === '') {
       // Nếu không có nội dung và cũng không có ảnh, trả về lỗi
       return res.status(400).json({
@@ -424,6 +537,76 @@ const addComment = async (req, res) => {
     });
   } catch (error) {
     console.error('Lỗi khi thêm bình luận:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server khi thêm bình luận',
+      error: error.message
+    });
+  }
+};
+
+// Thêm bình luận với ảnh lưu trong DB
+const addCommentWithImageInDB = async (req, res) => {
+  try {
+    uploadCommentImageToMemory(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          message: err.message
+        });
+      }
+      
+      const post = await ForumPost.findById(req.params.postId);
+
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy bài viết'
+        });
+      }
+
+      // Tạo dữ liệu bình luận cơ bản
+      const comment = {
+        content: req.body.content || 'Đã gửi một hình ảnh', // Đặt nội dung mặc định nếu chỉ có ảnh
+        author: req.user.id
+      };
+
+      // Thêm dữ liệu ảnh nếu có
+      if (req.file) {
+        comment.imageData = {
+          data: req.file.buffer,
+          contentType: req.file.mimetype
+        };
+      } else if (!req.body.content || req.body.content.trim() === '') {
+        // Nếu không có nội dung và cũng không có ảnh, trả về lỗi
+        return res.status(400).json({
+          success: false,
+          message: 'Bình luận phải có nội dung hoặc hình ảnh'
+        });
+      }
+
+      console.log('Thêm bình luận mới với ảnh lưu DB:', {
+        content: comment.content,
+        hasImage: !!req.file
+      });
+      
+      // Thêm bình luận vào bài viết
+      post.comments.push(comment);
+      await post.save();
+
+      // Populate thông tin tác giả cho bình luận vừa thêm
+      await post.populate('comments.author', 'name username avatar');
+
+      // Lấy ra bình luận vừa thêm (phần tử cuối cùng trong mảng comments)
+      const newComment = post.comments[post.comments.length - 1];
+
+      res.status(201).json({
+        success: true,
+        data: newComment
+      });
+    });
+  } catch (error) {
+    console.error('Lỗi khi thêm bình luận với ảnh lưu DB:', error);
     res.status(500).json({
       success: false,
       message: 'Lỗi server khi thêm bình luận',
@@ -790,13 +973,16 @@ const getForumStats = async (req, res) => {
 // Export tất cả các hàm với một cách thống nhất
 module.exports = {
   uploadFiles,
+  uploadFilesToDB,
   uploadCommentImage,
   createPost,
   uploadMediaFiles,
+  uploadMediaFilesToDB,
   getPosts,
   getPostById,
   incrementPostView,
   addComment,
+  addCommentWithImageInDB,
   updatePost,
   deletePost,
   likePost,
